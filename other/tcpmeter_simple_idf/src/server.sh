@@ -1,0 +1,1 @@
+while true; do echo "testtesttesttesttesttesttesttesttesttesttesttsettest"; done | nc -l -p 1234

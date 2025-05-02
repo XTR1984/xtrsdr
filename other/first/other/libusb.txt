@@ -1,0 +1,38 @@
+usb_host_install  + usb_host_client_register  + daemon TASK + client TASK
+
+libusb_init                             return init status
+libusb_open                             usb_host_device_open
+libusb_close                            usb_host_device_close    
+libusb_exit                             usb_host_uninstall
+
+libusb_kernel_driver_active
+libusb_detach_kernel_driver
+libusb_attach_kernel_driver
+
+
+libusb_get_device_list                  usb_host_device_addr_list_fill
+libusb_free_device_list             
+
+libusb_get_device
+libusb_get_device_descriptor            usb_host_get_device_descriptor
+libusb_get_string_descriptor_ascii      
+
+
+libusb_control_transfer                make sync for usb_host_transfer_submit_control
+                                       
+
+libusb_claim_interface                 usb_host_interface_claim
+libusb_release_interface               usb_host_interface_release  
+
+libusb_reset_device
+
+libusb_bulk_transfer
+libusb_alloc_transfer                   usb_host_transfer_alloc
+libusb_free_transfer                    usb_host_transfer_free
+libusb_submit_transfer                  usb_host_transfer_submit
+libusb_fill_bulk_transfer
+libusb_handle_events_timeout_completed
+libusb_cancel_transfer
+
+libusb_dev_mem_alloc
+libusb_dev_mem_free

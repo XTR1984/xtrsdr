@@ -1,0 +1,231 @@
+D (5626) librtlsdr: ra: usb_host_transfer_submit_control OK 0
+D (5631) librtlsdr: ra: usb_host_transfer_submit_control OK 1
+D (5637) librtlsdr: ra: usb_host_transfer_submit_control OK 2
+D (5642) librtlsdr: ra: usb_host_transfer_submit_control OK 3
+D (5648) librtlsdr: ra: usb_host_transfer_submit_control OK 4
+D (5653) librtlsdr: ra: usb_host_transfer_submit_control OK 5
+D (5686) librtlsdr: _libusb_callback for 3ffc8028
+cb_counter = 1 len=32000 toread=1024001
+avgsum=89
+D (5781) main: End work
+D (5782) main: free ram 31112 bytes
+D (5782) librtlsdr: _lc: usb_host_transfer_submit OK
+D (5782) librtlsdr: _libusb_callback for 3ffcfd38
+cb_counter = 2 len=32000 toread=992001
+avgsum=89
+D (5891) main: End work
+D (5891) main: free ram 31112 bytes
+D (5891) librtlsdr: _lc: usb_host_transfer_submit OK
+D (5891) librtlsdr: _libusb_callback for 3ffd7a48
+cb_counter = 3 len=32000 toread=960001
+avgsum=89
+D (6001) main: End work
+D (6001) main: free ram 31112 bytes
+D (6001) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6001) librtlsdr: _libusb_callback for 3ffdf758
+cb_counter = 4 len=32000 toread=928001
+avgsum=89
+D (6110) main: End work
+D (6110) main: free ram 31112 bytes
+D (6111) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6111) librtlsdr: _libusb_callback for 3ffe7468
+cb_counter = 5 len=32000 toread=896001
+avgsum=89
+D (6220) main: End work
+D (6220) main: free ram 31112 bytes
+D (6220) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6220) librtlsdr: _libusb_callback for 3ffef178
+cb_counter = 6 len=32000 toread=864001
+avgsum=89
+D (6329) main: End work
+D (6329) main: free ram 31112 bytes
+D (6329) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6330) librtlsdr: _libusb_callback for 3ffc8028
+cb_counter = 7 len=32000 toread=832001
+avgsum=89
+D (6439) main: End work
+D (6439) main: free ram 31112 bytes
+D (6439) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6439) librtlsdr: _libusb_callback for 3ffcfd38
+cb_counter = 8 len=32000 toread=800001
+avgsum=89
+D (6548) main: End work
+D (6548) main: free ram 31112 bytes
+D (6549) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6549) librtlsdr: _libusb_callback for 3ffd7a48
+cb_counter = 9 len=32000 toread=768001
+avgsum=89
+D (6658) main: End work
+D (6658) main: free ram 31112 bytes
+D (6658) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6658) librtlsdr: _libusb_callback for 3ffdf758
+cb_counter = 10 len=32000 toread=736001
+avgsum=89
+D (6767) main: End work
+D (6768) main: free ram 31112 bytes
+D (6768) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6768) librtlsdr: _libusb_callback for 3ffe7468
+cb_counter = 11 len=32000 toread=704001
+avgsum=89
+D (6877) main: End work
+D (6877) main: free ram 31112 bytes
+D (6877) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6877) librtlsdr: _libusb_callback for 3ffef178
+cb_counter = 12 len=32000 toread=672001
+avgsum=89
+D (6986) main: End work
+D (6986) main: free ram 31112 bytes
+D (6987) librtlsdr: _lc: usb_host_transfer_submit OK
+D (6987) librtlsdr: _libusb_callback for 3ffc8028
+cb_counter = 13 len=32000 toread=640001
+avgsum=89
+D (7096) main: End work
+D (7096) main: free ram 31112 bytes
+D (7096) librtlsdr: _lc: usb_host_transfer_submit OK
+D (7096) librtlsdr: _libusb_callback for 3ffcfd38
+cb_counter = 14 len=32000 toread=608001
+avgsum=89
+D (7205) main: End work
+D (7205) main: free ram 31112 bytes
+D (7206) librtlsdr: _lc: usb_host_transfer_submit OK
+D (7206) librtlsdr: _libusb_callback for 3ffd7a48
+cb_counter = 15 len=32000 toread=576001
+avgsum=89
+D (7315) main: End work
+D (7315) main: free ram 31112 bytes
+D (7315) librtlsdr: _lc: usb_host_transfer_submit OK
+D (7315) librtlsdr: _libusb_callback for 3ffdf758
+cb_counter = 16 len=32000 toread=544001
+avgsum=89
+D (7424) main: End work
+D (7425) main: free ram 31112 bytes
+D (7425) librtlsdr: _lc: usb_host_transfer_submit OK
+D (7425) librtlsdr: _libusb_callback for 3ffe7468
+cb_counter = 17 len=32000 toread=512001
+avgsum=89
+D (7534) main: End work
+D (7534) main: free ram 31112 bytes
+D (7534) librtlsdr: _lc: usb_host_transfer_submit OK
+D (7534) librtlsdr: _libusb_callback for 3ffef178
+cb_counter = 18 len=32000 toread=480001
+avgsum=89
+D (7643) main: End work
+D (7643) main: free ram 31112 bytes
+D (7643) librtlsdr: _lc: usb_host_transfer_submit OK
+D (7644) librtlsdr: _libusb_callback for 3ffc8028
+cb_counter = 19 len=32000 toread=448001
+avgsum=89
+D (7753) main: End work
+D (7753) main: free ram 31112 bytes
+D (7753) librtlsdr: _lc: usb_host_transfer_submit OK
+D (7753) librtlsdr: _libusb_callback for 3ffcfd38
+cb_counter = 20 len=32000 toread=416001
+avgsum=89
+D (7862) main: End work
+D (7862) main: free ram 31112 bytes
+D (7862) librtlsdr: _lc: usb_host_transfer_submit OK
+D (7863) librtlsdr: _libusb_callback for 3ffd7a48
+cb_counter = 21 len=32000 toread=384001
+avgsum=89
+D (7972) main: End work
+D (7972) main: free ram 31112 bytes
+D (7972) librtlsdr: _lc: usb_host_transfer_submit OK
+D (7972) librtlsdr: _libusb_callback for 3ffdf758
+cb_counter = 22 len=32000 toread=352001
+avgsum=89
+D (8081) main: End work
+D (8081) main: free ram 31112 bytes
+D (8081) librtlsdr: _lc: usb_host_transfer_submit OK
+D (8082) librtlsdr: _libusb_callback for 3ffe7468
+cb_counter = 23 len=32000 toread=320001
+avgsum=89
+D (8191) main: End work
+D (8191) main: free ram 31112 bytes
+D (8191) librtlsdr: _lc: usb_host_transfer_submit OK
+D (8191) librtlsdr: _libusb_callback for 3ffef178
+cb_counter = 24 len=32000 toread=288001
+avgsum=89
+D (8300) main: End work
+D (8300) main: free ram 31112 bytes
+D (8300) librtlsdr: _lc: usb_host_transfer_submit OK
+D (8300) librtlsdr: _libusb_callback for 3ffc8028
+cb_counter = 25 len=32000 toread=256001
+avgsum=89
+D (8409) main: End work
+D (8410) main: free ram 31112 bytes
+D (8410) librtlsdr: _lc: usb_host_transfer_submit OK
+D (8410) librtlsdr: _libusb_callback for 3ffcfd38
+cb_counter = 26 len=32000 toread=224001
+avgsum=89
+D (8519) main: End work
+D (8519) main: free ram 31112 bytes
+D (8519) librtlsdr: _lc: usb_host_transfer_submit OK
+D (8519) librtlsdr: _libusb_callback for 3ffd7a48
+cb_counter = 27 len=32000 toread=192001
+avgsum=89
+D (8629) main: End work
+D (8629) main: free ram 31112 bytes
+D (8629) librtlsdr: _lc: usb_host_transfer_submit OK
+D (8629) librtlsdr: _libusb_callback for 3ffdf758
+cb_counter = 28 len=32000 toread=160001
+avgsum=89
+D (8738) main: End work
+D (8738) main: free ram 31112 bytes
+D (8739) librtlsdr: _lc: usb_host_transfer_submit OK
+D (8739) librtlsdr: _libusb_callback for 3ffe7468
+cb_counter = 29 len=32000 toread=128001
+avgsum=89
+D (8848) main: End work
+D (8848) main: free ram 31112 bytes
+D (8848) librtlsdr: _lc: usb_host_transfer_submit OK
+D (8848) librtlsdr: _libusb_callback for 3ffef178
+cb_counter = 30 len=32000 toread=96001
+avgsum=89
+D (8957) main: End work
+D (8957) main: free ram 31112 bytes
+D (8957) librtlsdr: _lc: usb_host_transfer_submit OK
+D (8957) librtlsdr: _libusb_callback for 3ffc8028
+cb_counter = 31 len=32000 toread=64001
+avgsum=89
+D (9067) main: End work
+D (9067) main: free ram 31112 bytes
+D (9067) librtlsdr: _lc: usb_host_transfer_submit OK
+D (9067) librtlsdr: _libusb_callback for 3ffcfd38
+cb_counter = 32 len=32000 toread=32001
+avgsum=89
+D (9176) main: End work
+D (9176) main: free ram 31112 bytes
+D (9176) librtlsdr: _lc: usb_host_transfer_submit OK
+D (9177) librtlsdr: _libusb_callback for 3ffd7a48
+cb_counter = 33 len=32000 toread=1
+D (9191) librtlsdr: cancel_async
+D (9191) librtlsdr: cancel_async exit 0
+avgsum=177
+D (9191) main: End work
+D (9193) main: free ram 31112 bytes
+D (9196) librtlsdr: _libusb_callback for 3ffdf758
+cbD (9201) librtlsdr: ra:  halt and flush endpoint
+D (9205) librtlsdr: free_async_buffers
+D (9208) librtlsdr: free_async_buffers exit 0
+D (9212) librtlsdr: rtlsdr_read_async exit r
+_counter = 34 len=32000 toread=0
+D (9227) librtlsdr: _libusb_callback for 3ffe7468
+cb_counter = 35 len=32000 toread=0
+D (9227) librtlsdr: _libusb_callback for 3ffef178
+cb_counter = 36 len=32000 toread=0
+Guru Meditation Error: Core  0 panic'ed (LoadProhibited). Exception was unhandled.
+
+Core  0 register dump:
+PC      : 0x400929ec  PS      : 0x00060f33  A0      : 0x80090f9a  A1      : 0x3ffc7f80  
+A2      : 0x3ffc1828  A3      : 0x00000000  A4      : 0x00000001  A5      : 0x00000000  
+A6      : 0x00000000  A7      : 0x00000000  A8      : 0x00000001  A9      : 0x3ffc7f60  
+A10     : 0x00000001  A11     : 0xffffffff  A12     : 0x3ffff814  A13     : 0x00000001  
+A14     : 0x3ffc7f60  A15     : 0x0000000c  SAR     : 0x0000001f  EXCCAUSE: 0x0000001c  
+EXCVADDR: 0x00000000  LBEG    : 0x3ffff814  LEND    : 0x00000001  LCOUNT  : 0x400264ec  
+
+
+Backtrace: 0x400929e9:0x3ffc7f80 0x40090f97:0x3ffc7fa0 0x4008faa6:0x3ffc7fc0 0x40082f64:0x3ffc7ff0
+  #0  0x400929e9 in hcd_urb_dequeue at ??:?
+  #1  0x40090f97 in usbh_ep_dequeue_urb at ??:?
+  #2  0x4008faa6 in usb_host_client_handle_events at ??:?
+  #3  0x40082f64 in usbhost_one_client_task at librtlsdr/src/libusb.c:95
