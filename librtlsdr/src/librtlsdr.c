@@ -1584,7 +1584,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	/* Probe tuners */
 	ESP_LOGI("librtlsdr","ro:  probe tuners");
 	rtlsdr_set_i2c_repeater(dev, 1);
-/*	reg = rtlsdr_i2c_read_reg(dev, E4K_I2C_ADDR, E4K_CHECK_ADDR);
+	reg = rtlsdr_i2c_read_reg(dev, E4K_I2C_ADDR, E4K_CHECK_ADDR);
 	if (reg == E4K_CHECK_VAL) {
 		fprintf(stderr, "Found Elonics E4000 tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_E4000;
@@ -1597,7 +1597,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 		dev->tuner_type = RTLSDR_TUNER_FC0013;
 		goto found;
 	}
-*/
+	
 	reg = rtlsdr_i2c_read_reg(dev, R820T_I2C_ADDR, R82XX_CHECK_ADDR);
 	if (reg == R82XX_CHECK_VAL) {
 		fprintf(stderr, "Found Rafael Micro R820T tuner\n");
@@ -1887,24 +1887,13 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 			xfer->device_handle = dev->devh;
 			//xfer->flags
 
-			/*libusb_fill_bulk_transfer(dev->xfer[i],
-					  	dev->devh,
-					  	0x81,
-					  	dev->xfer_buf[i],
-					  	dev->xfer_buf_len,
-					  	_libusb_callback,
-					  	(void *)dev,
-					  	BULK_TIMEOUT);
-
-					 	context
-			*/
-
-			
+		
 			esp_err_t err;
 			err = usb_host_transfer_submit(dev->xfer[i]);
 			if (err != ESP_OK) {
 				ESP_LOGE(TAG, "ra: usb_host_transfer_submit ERR=%d", err);
 				dev->async_status = RTLSDR_CANCELING;
+				r = err;
 				break;
 			} else {
 				ESP_LOGD(TAG, "ra: usb_host_transfer_submit_control OK %d",i);

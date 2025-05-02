@@ -71,6 +71,8 @@
     #define WIFI_PASSWORD "12345"
 #endif
 
+const gpio_num_t LED_GPIO = GPIO_NUM_15;
+int led_state = 1;
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
@@ -117,7 +119,8 @@ static volatile int do_exit = 0;
 
 void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
-	//digitalWrite(LED,!digitalRead(LED));
+	led_state= !led_state;
+	gpio_set_level(LED_GPIO, led_state);
 	if(!do_exit) {
 		//struct llist *rpt = (struct llist*)malloc(sizeof(struct llist));
 		//rpt->data = (char*)malloc(len);
@@ -338,7 +341,8 @@ static void *command_worker(void *arg)
 			break;
 		case 0x02:
 			printf("set sample rate %d\n", ntohl(cmd.param));
-			rtlsdr_set_sample_rate(dev, ntohl(cmd.param));
+			//rtlsdr_set_sample_rate(dev, ntohl(cmd.param));
+			rtlsdr_set_sample_rate(dev, 240000);
 			break;
 		case 0x03:
 			printf("set gain mode %d\n", ntohl(cmd.param));
@@ -453,16 +457,23 @@ extern "C"  void app_main() {
 
 	uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
 	uart_set_pin(UART_NUM_0, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
- 
+
 	printf("xtrsdr v1.0.0 / rtl_tcp_wifi start\n");  
 	esp_log_level_set("*", ESP_LOG_DEBUG);
 	 // Print memory info
 	//uint32_t cpu_freq = getCpuFrequencyMhz(); 
 	//printf("CPU clock: %u MHz\n", cpu_freq);
-	 print_memory_info();
+    print_memory_info();
 
 	usbhost_begin();
 	vTaskDelay(3000 / portTICK_PERIOD_MS); 
+
+    // Initialize GPIO
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << LED_GPIO),
+        .mode = GPIO_MODE_OUTPUT,
+    };
+    gpio_config(&io_conf);
 
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -519,6 +530,8 @@ extern "C"  void app_main() {
 			vTaskDelay(1000 / portTICK_PERIOD_MS); 
 		}
 	}
+	gpio_set_level(LED_GPIO, 1);
+
 	/* Set direct sampling */
         if (direct_sampling)
                 verbose_direct_sampling(dev, 2);
@@ -665,7 +678,7 @@ char addr_str[128];
 			}
 		}
 
-		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
+//		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
 
 /*		getnameinfo((struct sockaddr *)&remote, rlen,
 			    remhostinfo, NI_MAXHOST,
@@ -717,6 +730,7 @@ char addr_str[128];
 
 out:
 	rtlsdr_close(dev);
+	gpio_set_level(LED_GPIO, 0);	
 	closesocket(listensocket);
 	closesocket(s);
 
