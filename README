@@ -2,7 +2,7 @@
 Trying to connect rtlsdr dongle and esp32s2  
 
 Попытка подключить свисток rtlsdr к esp32s2
-!["pic 1](pictures/pic1.jpg?raw=true )
+!["pic 1"](pictures/pic1.jpg?raw=true )
 
 Зачем?
 - просто так, по приколу, попутно погружаясь в глубины глубин разработки под esp32
