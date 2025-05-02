@@ -17,7 +17,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <Arduino.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "esp_log.h"
+#include "esp_system.h"
+#include "esp_heap_caps.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "nvs_flash.h"
+
+
+#include "driver/gpio.h"
+#include "driver/uart.h"
+
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -28,12 +41,12 @@
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
 
-#include "esp32-hal-cpu.h"
+//#include "esp32-hal-cpu.h"
 
 #include <fcntl.h>
 #include <pthread.h>
 
-#include "libusb.h"
+#include <libusb.h>
 #include "rtl-sdr.h"
 #include "convenience.h"
 
@@ -41,7 +54,11 @@
 #define TAG "main"
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
-#include <WiFi.h>
+
+#define UART_NUM UART_NUM_0       
+#define UART_TX_PIN GPIO_NUM_17
+#define UART_RX_PIN GPIO_NUM_18
+
 
 #if __has_include("password.h")
   #include "password.h"
@@ -65,7 +82,7 @@ const char* password = WIFI_PASSWORD;
 
 #define DEFAULT_PORT_STR "1234"
 #define DEFAULT_SAMPLE_RATE_HZ 240000
-#define DEFAULT_MAX_NUM_BUFFERS 10
+#define DEFAULT_MAX_NUM_BUFFERS 100
 
 static SOCKET s;
 
@@ -100,10 +117,12 @@ static volatile int do_exit = 0;
 
 void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
-	digitalWrite(LED,!digitalRead(LED));
+	//digitalWrite(LED,!digitalRead(LED));
 	if(!do_exit) {
-		struct llist *rpt = (struct llist*)malloc(sizeof(struct llist));
-		rpt->data = (char*)malloc(len);
+		//struct llist *rpt = (struct llist*)malloc(sizeof(struct llist));
+		//rpt->data = (char*)malloc(len);
+		struct llist *rpt = (struct llist*) heap_caps_malloc(sizeof(struct llist),MALLOC_CAP_SPIRAM);
+		rpt->data = (char*)heap_caps_malloc(len,MALLOC_CAP_SPIRAM);
 		memcpy(rpt->data, buf, len);
 		rpt->len = len;
 		rpt->next = NULL;
@@ -143,6 +162,66 @@ void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 		pthread_mutex_unlock(&ll_mutex);
 	}
 }
+
+static void wifi_event_handler(void* arg, esp_event_base_t event_base, 	int32_t event_id, void* event_data) {
+	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+		esp_wifi_connect();
+	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+		esp_wifi_connect();
+		ESP_LOGI(TAG, "Retrying to connect to the AP");
+	} else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+		ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+		ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+	}
+}
+
+
+static void wifi_init_sta() {
+    esp_netif_init();
+    esp_event_loop_create_default();
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    esp_event_handler_instance_t instance_any_id;
+    esp_event_handler_instance_t instance_got_ip;
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
+                                                        ESP_EVENT_ANY_ID,
+                                                        &wifi_event_handler,
+                                                        NULL,
+                                                        &instance_any_id));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &wifi_event_handler,
+                                                        NULL,
+                                                        &instance_got_ip));
+
+
+wifi_config_t wifi_config = {
+  .sta = {
+      .ssid = WIFI_SSID,
+      .password = WIFI_PASSWORD,
+      .threshold = {
+          .authmode = WIFI_AUTH_WPA2_PSK,
+      },
+      .pmf_cfg = {
+          .capable = true,
+          .required = false
+      },
+      .sae_pwe_h2e = WPA3_SAE_PWE_BOTH,
+      .failure_retry_cnt = 3
+  },
+};
+  
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(44));
+
+    ESP_LOGI(TAG, "wifi_init_sta finished.");
+}
+
 
 static void *tcp_worker(void *arg)
 {
@@ -318,7 +397,7 @@ static void *command_worker(void *arg)
 }
 
 
-void printMemoryInfo() {
+/*void printMemoryInfo() {
 	Serial0.println("Memory Information:");
 	// common info
 	Serial0.printf("Total heap: %d bytes\n", ESP.getHeapSize());
@@ -328,11 +407,19 @@ void printMemoryInfo() {
 	Serial0.printf("Total PSRAM: %d bytes\n", ESP.getPsramSize());
 	Serial0.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
   }
-  
+*/  
+
+static void print_memory_info() {
+    ESP_LOGI(TAG, "Memory Information:");
+    ESP_LOGI(TAG, "Total heap: %d bytes", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "Minimum free heap: %d bytes", esp_get_minimum_free_heap_size());
+    ESP_LOGI(TAG, "Free PSRAM: %d bytes", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+	ESP_LOGI(TAG, "Free SRAM: %d bytes", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+}
+
 
 //int main(int argc, char **argv)
-void setup()
-{
+extern "C"  void app_main() {
 	int r, opt, i;
 	char *addr = "127.0.0.1";
 	const char *port = DEFAULT_PORT_STR;
@@ -347,7 +434,7 @@ void setup()
 	char remhostinfo[256];  //NI_MAXHOST
 	char remportinfo[256];  //NI_MAXSERV
 	int aiErr;
-	uint32_t buf_num = 0;
+	uint32_t buf_num = 10;
 	int dev_index = 0;
 	int dev_given = 0;
 	int gain = 0;
@@ -363,41 +450,39 @@ void setup()
 	fd_set readfds;
 	u_long blockmode = 1;
 	dongle_info_t dongle_info;
+
+	uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
+	uart_set_pin(UART_NUM_0, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+ 
+	printf("xtrsdr v1.0.0 / rtl_tcp_wifi start\n");  
+	esp_log_level_set("*", ESP_LOG_DEBUG);
+	 // Print memory info
+	//uint32_t cpu_freq = getCpuFrequencyMhz(); 
+	//printf("CPU clock: %u MHz\n", cpu_freq);
+	 print_memory_info();
+
+	usbhost_begin();
+	vTaskDelay(3000 / portTICK_PERIOD_MS); 
+
+    // Initialize NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+  
+  	// init Wifi station
+    wifi_init_sta();
+	print_memory_info();
+
+
 	
-//	esp_log_level_set("*", ESP_LOG_DEBUG);
-	dev_index = verbose_device_search(optarg);
-	dev_given = 1;
+	//dev_index = verbose_device_search(optarg);
+	//dev_given = 1;
 	frequency = 102400000;
 	gain = 100;
 	samp_rate = 240000;
-
-	pinMode(LED, OUTPUT);
-	Serial0.begin(230400,SERIAL_8N1,18,17);
-	fprintf(stderr, "xtrsdr v1.0.0 / rtl_tcp_wifi start\n");  
-	uint32_t cpu_freq = getCpuFrequencyMhz(); 
-	printf("CPU clock: %u MHz\n", cpu_freq);
-	printMemoryInfo();
-  
-	//esp_log_level_set("*", ESP_LOG_DEBUG);
-  
-	usbhost_begin();
-	delay(3000);
-  
-  	// init Wifi station
-  	WiFi.begin(ssid, password);
-  	WiFi.setTxPower(WIFI_POWER_7dBm);
-	
-  	while (WiFi.status() != WL_CONNECTED) {
-	    delay(500);
-	    Serial.print(".");   // Check WIFI_SSID and PASSWORD!
-  	}
-  	Serial0.println("");
-  	Serial0.println("WiFi connected");
-  	Serial0.println("IP address: ");
-  	Serial0.println(WiFi.localIP());
-  	Serial0.print("RSSI Wi-Fi: ");
-  	Serial0.print(WiFi.RSSI());        
-  	Serial0.print(" dBm");
 
 
 	//if (!dev_given) {
@@ -412,7 +497,9 @@ void setup()
 	 device_count = rtlsdr_get_device_count();    
 	if (!device_count) {
 		fprintf(stderr, "No supported devices found.\n");
-    while(1) delay(100);
+		while (1) { 
+			vTaskDelay(1000 / portTICK_PERIOD_MS); 
+		}
 	}
 
   	fprintf(stderr, "Found %d device(s):\n", device_count);
@@ -428,7 +515,9 @@ void setup()
 	if (NULL == dev) {
 	fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
 		//exit(1);
-		while(1) delay(100);
+		while (1) { 
+			vTaskDelay(1000 / portTICK_PERIOD_MS); 
+		}
 	}
 	/* Set direct sampling */
         if (direct_sampling)
@@ -581,7 +670,7 @@ char addr_str[128];
 /*		getnameinfo((struct sockaddr *)&remote, rlen,
 			    remhostinfo, NI_MAXHOST,
 			    remportinfo, NI_MAXSERV, NI_NUMERICSERV);*/
-		printf("client accepted!) // %s %s\n", remhostinfo, remportinfo);
+		printf("client accepted!"); // %s %s\n", remhostinfo, remportinfo);
 
 		memset(&dongle_info, 0, sizeof(dongle_info));
 		memcpy(&dongle_info.magic, "RTL0", 4);
@@ -632,9 +721,7 @@ out:
 	closesocket(s);
 
 	printf("bye!\n");
-	while(1) delay(100);	
-}
-
-void loop(){
-	while(1) delay(100);
+	while (1) { 
+		vTaskDelay(1000 / portTICK_PERIOD_MS); 
+	}
 }

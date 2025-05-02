@@ -588,6 +588,7 @@ void rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio)
 void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
 {
 	rtlsdr_demod_write_reg(dev, 1, 0x01, on ? 0x18 : 0x10, 1);
+	vTaskDelay(1 / portTICK_PERIOD_MS); 
 }
 
 int rtlsdr_set_fir(rtlsdr_dev_t *dev)
@@ -1583,8 +1584,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	/* Probe tuners */
 	ESP_LOGI("librtlsdr","ro:  probe tuners");
 	rtlsdr_set_i2c_repeater(dev, 1);
-
-	reg = rtlsdr_i2c_read_reg(dev, E4K_I2C_ADDR, E4K_CHECK_ADDR);
+/*	reg = rtlsdr_i2c_read_reg(dev, E4K_I2C_ADDR, E4K_CHECK_ADDR);
 	if (reg == E4K_CHECK_VAL) {
 		fprintf(stderr, "Found Elonics E4000 tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_E4000;
@@ -1597,7 +1597,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 		dev->tuner_type = RTLSDR_TUNER_FC0013;
 		goto found;
 	}
-
+*/
 	reg = rtlsdr_i2c_read_reg(dev, R820T_I2C_ADDR, R82XX_CHECK_ADDR);
 	if (reg == R82XX_CHECK_VAL) {
 		fprintf(stderr, "Found Rafael Micro R820T tuner\n");
@@ -1732,7 +1732,7 @@ int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_read)
 static void LIBUSB_CALL _libusb_callback(usb_transfer_t *xfer)
 {
 	esp_err_t err;
-	ESP_LOGD(TAG, "_libusb_callback for %08x", xfer->data_buffer);
+	ESP_LOGV(TAG, "_libusb_callback for %08x", xfer->data_buffer);
 	rtlsdr_dev_t *dev = (rtlsdr_dev_t *)xfer->context;
 	
 	if (USB_TRANSFER_STATUS_COMPLETED == xfer->status) {
@@ -1747,7 +1747,7 @@ static void LIBUSB_CALL _libusb_callback(usb_transfer_t *xfer)
 				ESP_LOGE(TAG, "_lc: usb_host_transfer_submit ERR=%d", err);
 			} 
 			else {
-				ESP_LOGD(TAG, "_lc: usb_host_transfer_submit OK", err);
+				ESP_LOGV(TAG, "_lc: usb_host_transfer_submit OK", err);
 			}
 		}
 	
@@ -1772,6 +1772,8 @@ int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx)
 static int _rtlsdr_alloc_async_buffers(rtlsdr_dev_t *dev)
 {
 	ESP_LOGD(TAG, "alloc_async_buffers");
+	ESP_LOGI(TAG, "Free SRAM: %d bytes", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));	
+    ESP_LOGI(TAG, "Free PSRAM: %d bytes", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 	unsigned int i;
 
 	if (!dev){
@@ -1928,7 +1930,7 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 			ESP_LOGD(TAG, "ra:  halt and flush endpoint");
 			usb_host_endpoint_halt(dev->devh, 0x81);
    		  	usb_host_endpoint_flush(dev->devh, 0x81);
-			delay(1000);
+			vTaskDelay(1000 / portTICK_PERIOD_MS); 
 
 			//next_status = RTLSDR_CANCELING;
 
@@ -1937,7 +1939,7 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 				break;
 			}
 		}
-		delay(10);
+		vTaskDelay(10 / portTICK_PERIOD_MS); 
 	}
 
 	_rtlsdr_free_async_buffers(dev);

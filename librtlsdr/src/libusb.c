@@ -1,5 +1,4 @@
 #include <libusb.h>
-#include <Arduino.h>
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 
@@ -48,7 +47,9 @@ void usbhost_begin()
 	
 	  if (taskStatus != pdPASS) {
 		ESP_LOGE("libusb","Error creating uh daemon task!");
-		while(1) delay(100);
+		while (1) { 
+			vTaskDelay(1000 / portTICK_PERIOD_MS); 
+		}
 	  }
 
 	  TaskHandle_t taskHandle2 = NULL;
@@ -63,7 +64,9 @@ void usbhost_begin()
 	
 	  if (taskStatus2 != pdPASS) {
 		ESP_LOGE("libusb","Error creating uh client task!");
-		while(1) delay(100);
+		while (1) { 
+ 		   vTaskDelay(1000 / portTICK_PERIOD_MS); 
+		}
 	  }
 
 
@@ -85,7 +88,7 @@ void usbhost_daemon_task(){
 		if (err != ESP_OK && err != ESP_ERR_TIMEOUT) {
 	  		ESP_LOGI("libusb", "usb_host_lib_handle_events() err=%x eventflags=%x", err, &event_flags);
 		}
-		delay(10);
+		vTaskDelay(10 / portTICK_PERIOD_MS); 
 	}	
 }		
 
@@ -96,7 +99,7 @@ void usbhost_one_client_task(){
 		if (err != ESP_OK && err != ESP_ERR_TIMEOUT) {
 	  		ESP_LOGI("libusb", "usb_host_client_handle_events() err=%x", err);
 		}
-		delay(1);
+		vTaskDelay(1 / portTICK_PERIOD_MS); 
 	}
 }
 
@@ -180,7 +183,7 @@ int libusb_control_transfer(usb_device_handle_t dev_handle,uint8_t bmRequestType
 	} else {
 		ESP_LOGV(TAG, "ct: usb_host_transfer_submit_control OK");
 	}
-	delay(20);
+	//delay(20);
 
 	if (xSemaphoreTake(cbSemaphore, pdMS_TO_TICKS(timeout)) == pdTRUE) {
 		ESP_LOGV(TAG, "data ready");
