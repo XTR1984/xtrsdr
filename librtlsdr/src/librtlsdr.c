@@ -558,7 +558,7 @@ int rtlsdr_demod_write_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, uint1
 
 	if (r < 0)
 		fprintf(stderr, "%s failed with %d\n", __FUNCTION__, r);
-
+		
 	rtlsdr_demod_read_reg(dev, 0x0a, 0x01, 1);
 
 	return (r == len) ? 0 : -1;
@@ -588,7 +588,7 @@ void rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio)
 void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
 {
 	rtlsdr_demod_write_reg(dev, 1, 0x01, on ? 0x18 : 0x10, 1);
-	vTaskDelay(1 / portTICK_PERIOD_MS); 
+	vTaskDelay(10 / portTICK_PERIOD_MS); 
 }
 
 int rtlsdr_set_fir(rtlsdr_dev_t *dev)
@@ -863,7 +863,7 @@ int rtlsdr_read_eeprom(rtlsdr_dev_t *dev, uint8_t *data, uint8_t offset, uint16_
 
 int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 {
-	ESP_LOGD("librtlsdr","set_center_freq");
+	ESP_LOGD("librtlsdr","set_center_freq %d", freq);
 	int r = -1;
 
 	if (!dev || !dev->tuner)
@@ -1739,7 +1739,7 @@ static void LIBUSB_CALL _libusb_callback(usb_transfer_t *xfer)
 		ESP_LOGV(TAG, "actual_num_bytes=%d", xfer->actual_num_bytes);
 
 		if (dev->cb)  
-			dev->cb(xfer->data_buffer, xfer->actual_num_bytes , 0);   //
+			dev->cb(xfer->data_buffer, xfer->actual_num_bytes , dev->cb_ctx);   //
 
 		if (dev->async_status==RTLSDR_RUNNING){			
 			err = usb_host_transfer_submit(xfer); /* resubmit transfer */
@@ -1772,8 +1772,8 @@ int rtlsdr_wait_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx)
 static int _rtlsdr_alloc_async_buffers(rtlsdr_dev_t *dev)
 {
 	ESP_LOGD(TAG, "alloc_async_buffers");
-	ESP_LOGI(TAG, "Free SRAM: %d bytes", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));	
-    ESP_LOGI(TAG, "Free PSRAM: %d bytes", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+	ESP_LOGI(TAG, "Free RAM before alloc: %d bytes", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));	
+    //ESP_LOGI(TAG, "Free PSRAM: %d bytes", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 	unsigned int i;
 
 	if (!dev){
@@ -1802,9 +1802,9 @@ static int _rtlsdr_alloc_async_buffers(rtlsdr_dev_t *dev)
 	}
 
 	int freeram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-	int freepsram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-	ESP_LOGD(TAG, "free ram after buffers alloc %d bytes", freeram);
-	ESP_LOGD(TAG, "free psram after buffers alloc %d bytes", freepsram);
+	ESP_LOGI(TAG, "free ram after buffers alloc %d bytes", freeram);
+	//int freepsram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+	//ESP_LOGD(TAG, "free psram after buffers alloc %d bytes", freepsram);
 	ESP_LOGD(TAG, "alloc_async_buffers exit 0");
 	return 0;
 }

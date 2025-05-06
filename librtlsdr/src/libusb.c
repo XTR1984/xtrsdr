@@ -41,7 +41,7 @@ void usbhost_begin()
 		"uh_daemon",
 		10000,
 		NULL,
-		1,
+		10,
 		&taskHandle
 	  );
 	
@@ -58,7 +58,7 @@ void usbhost_begin()
 		"uh_client",
 		10000,
 		NULL,
-		5,
+		10,
 		&taskHandle2
 	  );
 	
@@ -88,7 +88,7 @@ void usbhost_daemon_task(){
 		if (err != ESP_OK && err != ESP_ERR_TIMEOUT) {
 	  		ESP_LOGI("libusb", "usb_host_lib_handle_events() err=%x eventflags=%x", err, &event_flags);
 		}
-		vTaskDelay(10 / portTICK_PERIOD_MS); 
+		vTaskDelay(1 / portTICK_PERIOD_MS); 
 	}	
 }		
 
@@ -183,7 +183,7 @@ int libusb_control_transfer(usb_device_handle_t dev_handle,uint8_t bmRequestType
 	} else {
 		ESP_LOGV(TAG, "ct: usb_host_transfer_submit_control OK");
 	}
-	//delay(20);
+	//vTaskDelay(1 / portTICK_PERIOD_MS);
 
 	if (xSemaphoreTake(cbSemaphore, pdMS_TO_TICKS(timeout)) == pdTRUE) {
 		ESP_LOGV(TAG, "data ready");
@@ -196,7 +196,7 @@ int libusb_control_transfer(usb_device_handle_t dev_handle,uint8_t bmRequestType
 		
 
     } else {
-       return USB_TRANSFER_STATUS_TIMED_OUT; 
+       return LIBUSB_ERROR_TIMEOUT; 
     }
 
 	switch (transfer->status) {

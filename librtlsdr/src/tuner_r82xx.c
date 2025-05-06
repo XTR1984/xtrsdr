@@ -278,7 +278,7 @@ static bool shadow_equal(struct r82xx_priv *priv, uint8_t reg, const uint8_t *va
 static int r82xx_write(struct r82xx_priv *priv, uint8_t reg, const uint8_t *val,
 		       unsigned int len)
 {
-	ESP_LOGD(TAG, "r82xx_write");
+	ESP_LOGD(TAG, "r82xx_write reg=%02x len=%d", reg, len);
 	int rc, size, pos = 0;
 
 	/* Avoid setting registers unnecessarily since it's slow */
@@ -298,7 +298,7 @@ static int r82xx_write(struct r82xx_priv *priv, uint8_t reg, const uint8_t *val,
 		priv->buf[0] = reg;
 		memcpy(&priv->buf[1], &val[pos], size);
 
-		ESP_LOGD(TAG, "r82xx_write  i2c");
+		ESP_LOGD(TAG, "r82xx_write  i2c  size=%d", size);
 		rc = rtlsdr_i2c_write_fn(priv->rtl_dev, priv->cfg->i2c_addr,
 					 priv->buf, size + 1);
 
@@ -335,7 +335,7 @@ static int r82xx_read_cache_reg(struct r82xx_priv *priv, int reg)
 static int r82xx_write_reg_mask(struct r82xx_priv *priv, uint8_t reg, uint8_t val,
 				uint8_t bit_mask)
 {
-	ESP_LOGD(TAG,"r82xx_write_reg_mask");
+	ESP_LOGD(TAG,"r82xx_write_reg_mask %02x %02x %02x", reg, val, bit_mask);
 	int rc = r82xx_read_cache_reg(priv, reg);
 
 	if (rc < 0)
@@ -356,6 +356,7 @@ static uint8_t r82xx_bitrev(uint8_t byte)
 
 static int r82xx_read(struct r82xx_priv *priv, uint8_t reg, uint8_t *val, int len)
 {
+	ESP_LOGD(TAG, "r82xx_read reg=%02x len=%d", reg, len);
 	int rc, i;
 	uint8_t *p = &priv->buf[1];
 
