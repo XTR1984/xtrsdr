@@ -588,7 +588,7 @@ void rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio)
 void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
 {
 	rtlsdr_demod_write_reg(dev, 1, 0x01, on ? 0x18 : 0x10, 1);
-	vTaskDelay(10 / portTICK_PERIOD_MS); 
+	//vTaskDelay(10 / portTICK_PERIOD_MS); 
 }
 
 int rtlsdr_set_fir(rtlsdr_dev_t *dev)
