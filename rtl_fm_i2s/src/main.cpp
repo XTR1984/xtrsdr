@@ -80,8 +80,11 @@ int led_state = 1;
 #define I2S_WS_GPIO   GPIO_NUM_5
 #define I2S_DIN_GPIO  GPIO_NUM_7
 
+#define FREQ		102400000
+#define RTLSDR_BUF_LEN 			64000
+#define RTLSDR_BUF_NUM			2
 #define DEFAULT_SAMPLE_RATE		16000
-#define DEFAULT_BUF_LENGTH		(1 * 16384)
+#define DEFAULT_BUF_LENGTH		(1 * 16000)
 #define MAXIMUM_OVERSAMPLE		8
 #define MAXIMUM_BUF_LENGTH		(MAXIMUM_OVERSAMPLE * DEFAULT_BUF_LENGTH)
 #define AUTO_GAIN			-100
@@ -109,7 +112,6 @@ struct dongle_state
 	uint32_t rate;
 	int      gain;
 	uint16_t buf16[MAXIMUM_BUF_LENGTH];
-	uint32_t buf_len;
 	int      ppm_error;
 	int      offset_tuning;
 	int      direct_sampling;
@@ -161,6 +163,7 @@ struct output_state
 //	char     *filename;
 	int16_t  result[MAXIMUM_BUF_LENGTH];
 	int      result_len;
+	int 	 play;
 	int      rate;
 	pthread_rwlock_t rw;
 	pthread_cond_t ready;
@@ -716,12 +719,10 @@ void full_demod(struct demod_state *d)
 
 static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
-	led_state= !led_state;
-	gpio_set_level(LED_GPIO, led_state);
 	int i;
 	struct dongle_state *s = (dongle_state*) ctx;
 	struct demod_state *d = s->demod_target;
-
+	//ESP_LOGD(TAG, "CB %d", len);
 	if (do_exit) {
 		return;}
 	if (!ctx) {
@@ -741,24 +742,29 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 	d->lp_len = len;
 	pthread_rwlock_unlock(&d->rw);
 	safe_cond_signal(&d->ready, &d->ready_m);
+	vTaskDelay(pdMS_TO_TICKS(1));
 }
 
-static void *dongle_thread_fn(void *arg)
+static void dongle_thread_fn(void *arg)
 {
 	struct dongle_state *s = (dongle_state *) arg;
 	gpio_set_level(LED_GPIO, 1);
-	rtlsdr_read_async(s->dev, rtlsdr_callback, s, 0, s->buf_len);
-	return 0;
+	rtlsdr_read_async(s->dev, rtlsdr_callback, s, RTLSDR_BUF_NUM, RTLSDR_BUF_LEN);
+	return;
 }
 
-static void *demod_thread_fn(void *arg)
+static void demod_thread_fn(void *arg)
 {
 	struct demod_state *d =(demod_state *) arg;
 	struct output_state *o = d->output_target;
 	while (!do_exit) {
 		safe_cond_wait(&d->ready, &d->ready_m);
 		pthread_rwlock_wrlock(&d->rw);
+		led_state= !led_state;
+		//ESP_LOGD(TAG, "FD");
+		gpio_set_level(LED_GPIO, led_state);
 		full_demod(d);
+		//ESP_LOGD(TAG, "FDE %d", d->result_len);
 		pthread_rwlock_unlock(&d->rw);
 		if (d->exit_flag) {
 			do_exit = 1;
@@ -774,10 +780,10 @@ static void *demod_thread_fn(void *arg)
 		pthread_rwlock_unlock(&o->rw);
 		safe_cond_signal(&o->ready, &o->ready_m);
 	}
-	return 0;
+	return;
 }
 
-static void *output_thread_fn(void *arg)
+static void output_thread_fn(void *arg)
 {
 	struct output_state *s = (output_state *)arg;
 	ESP_ERROR_CHECK(i2s_channel_enable(tx_chan));
@@ -785,16 +791,17 @@ static void *output_thread_fn(void *arg)
 		// use timedwait and pad out under runs
 		safe_cond_wait(&s->ready, &s->ready_m);
 		pthread_rwlock_rdlock(&s->rw);
-		
 		size_t w_bytes = 0;
+		//ESP_LOGD(TAG, "OS");
 		i2s_channel_write(tx_chan, s->result, s->result_len, &w_bytes, 1000);
+		//ESP_LOGD(TAG, "OE %d %d", s->result_len, w_bytes);
 		//for (int i =0;i<s->result_len;i++){
 		//	i2s_channel_write(tx_chan, "00", 1, &w_bytes, 1000);
 		//	
 		//}
 		pthread_rwlock_unlock(&s->rw);
 	}
-	return 0;
+	return;
 }
 
 static void optimal_settings(int freq, int rate)
@@ -805,13 +812,16 @@ static void optimal_settings(int freq, int rate)
 	struct dongle_state *d = &dongle;
 	struct demod_state *dm = &demod;
 	struct controller_state *cs = &controller;
-	dm->downsample = (240000 / dm->rate_in) + 1 ;
+	//dm->downsample = ( / dm->rate_in) + 1 ;
+	dm->downsample = 1;
 	if (dm->downsample_passes) {
 		dm->downsample_passes = (int)log2(dm->downsample) + 1;
 		dm->downsample = 1 << dm->downsample_passes;
 	}
 	capture_freq = freq;
-	capture_rate = dm->downsample * dm->rate_in;
+//	capture_rate = dm->downsample * dm->rate_in;
+	capture_rate = 256000;
+
 	if (!d->offset_tuning) {
 		capture_freq = freq + capture_rate/4;}
 	capture_freq += cs->edge * dm->rate_in / 2;
@@ -824,7 +834,7 @@ static void optimal_settings(int freq, int rate)
 	d->rate = (uint32_t)capture_rate;
 }
 
-static void *controller_thread_fn(void *arg)
+static void controller_thread_fn(void *arg)
 {
 	// thoughts for multiple dongles
 	// might be no good using a controller thread if retune/rate blocks
@@ -864,7 +874,7 @@ static void *controller_thread_fn(void *arg)
 		rtlsdr_set_center_freq(dongle.dev, dongle.freq);
 		dongle.mute = BUFFER_DUMP;
 	}
-	return 0;
+	return;
 }
 
 void frequency_range(struct controller_state *s, char *arg)
@@ -962,7 +972,7 @@ void output_cleanup(struct output_state *s)
 
 void controller_init(struct controller_state *s)
 {
-	s->freqs[0] = 102400000;
+	s->freqs[0] = 144800000;
 	s->freq_len = 0;
 	s->edge = 0;
 	s->wb_mode = 0;
@@ -1044,21 +1054,22 @@ extern "C"  void app_main()
 	fflush(stdout);
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
 		
-	controller.freqs[0] = (uint32_t) 102400000;
+	controller.freqs[0] = (uint32_t) FREQ;
 	controller.freq_len++;
 
 	//controller.wb_mode = 1;
-	dongle.gain = 10;
-	demod.mode_demod = &usb_demod;
+	//dongle.gain = 200;
+	dongle.offset_tuning = 1;
+	demod.mode_demod = &fm_demod;
 	dongle.direct_sampling=0;
 	
-	//demod.rate_in = 170000;
-	//#demod.rate_out = 170000;
-	//demod.rate_out2 = 32000;
-	//demod.custom_atan = 1;
-	//demod.post_downsample = 4;
-	//demod.deemph = 1;
-	//demod.squelch_level = 0;
+	demod.rate_in = 256000;
+	demod.rate_out = 256000;
+	demod.rate_out2 = 16000;
+	demod.custom_atan = 1;
+	demod.post_downsample = 1;
+	demod.deemph = 1;
+	demod.squelch_level = 0;
 
 	dongle.ppm_error = 66;
 	custom_ppm = 1;
@@ -1118,7 +1129,7 @@ extern "C"  void app_main()
 	i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
     ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, &tx_chan, NULL));
 	i2s_std_config_t tx_std_cfg = {
-        .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(16000),
+        .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(DEFAULT_SAMPLE_RATE),
         .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
         .gpio_cfg = {
             .mclk = I2S_GPIO_UNUSED,    // some codecs may require mclk signal, this example doesn't need it
@@ -1137,17 +1148,40 @@ extern "C"  void app_main()
 	ESP_ERROR_CHECK(i2s_channel_init_std_mode(tx_chan, &tx_std_cfg));
 	
 
-
+	
 	//r = rtlsdr_set_testmode(dongle.dev, 1);
+	optimal_settings(controller.freqs[0], demod.rate_in);
+	if (dongle.direct_sampling) {
+		verbose_direct_sampling(dongle.dev, dongle.direct_sampling);}
+	if (dongle.offset_tuning) {
+		verbose_offset_tuning(dongle.dev);}
 
+	/* Set the frequency */
+	verbose_set_frequency(dongle.dev, dongle.freq);
+	fprintf(stderr, "Oversampling input by: %ix.\n", demod.downsample);
+	fprintf(stderr, "Oversampling output by: %ix.\n", demod.post_downsample);
+	fprintf(stderr, "Buffer size: %0.2fms\n",
+		1000 * 0.5 * (float)ACTUAL_BUF_LENGTH / (float)dongle.rate);
+
+	/* Set the sample rate */
+	verbose_set_sample_rate(dongle.dev, dongle.rate);
+	fprintf(stderr, "Output at %u Hz.\n", demod.rate_in/demod.post_downsample);
+
+	vTaskDelay(pdMS_TO_TICKS(1000));
 	/* Reset endpoint before we start reading from it (mandatory) */
 	verbose_reset_buffer(dongle.dev);
 
-	pthread_create(&controller.thread, NULL, controller_thread_fn, (void *)(&controller));
-	usleep(100000);
-	pthread_create(&output.thread, NULL, output_thread_fn, (void *)(&output));
-	pthread_create(&demod.thread, NULL, demod_thread_fn, (void *)(&demod));
-	pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
+	//pthread_create(&controller.thread, NULL, controller_thread_fn, (void *)(&controller));
+	//xTaskCreate(controller_thread_fn, "contr", 4096, (void *)(&controller), 1, NULL);
+	//usleep(100000);
+	//pthread_create(&output.thread, NULL, output_thread_fn, (void *)(&output));
+	xTaskCreate(output_thread_fn, "output", 4096, (void *)(&output), 5, NULL);
+	//pthread_create(&demod.thread, NULL, demod_thread_fn, (void *)(&demod));
+	xTaskCreate(demod_thread_fn, "demo", 4096, (void *)(&demod), 5, NULL);
+	//pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
+	xTaskCreate(dongle_thread_fn, "dongle", 4096, (void *)(&dongle), 15, NULL);
+//	vTaskDelay(pdMS_TO_TICKS(1000));
+	
 
 	while (!do_exit) {
 		usleep(100000);
