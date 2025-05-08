@@ -20,33 +20,10 @@
  */
 
 
-/*
- * written because people could not do real time
- * FM demod on Atom hardware with GNU radio
- * based on rtl_sdr.c and rtl_tcp.c
- *
- * lots of locks, but that is okay
- * (no many-to-many locks)
- *
- * todo:
- *       sanity checks
- *       scale squelch to other input parameters
- *       test all the demodulations
- *       pad output on hop
- *       frequency ranges could be stored better
- *       scaled AM demod amplification
- *       auto-hop after time limit
- *       peak detector to tune onto stronger signals
- *       fifo for active hop frequency
- *       clips
- *       noise squelch
- *       merge stereo patch
- *       merge soft agc patch
- *       merge udp patch
- *       testmode to detect overruns
- *       watchdog to reset bad dongle
- *       fix oversampling
- */
+/* rtl_fm example for esp32s2 and i2s dac MAX98357A */
+/* sample rate 256000 and out rate 16000 */
+/* tuned for WFM demodulation on FREQ */
+/* removed Controller task for freq hopping*/
 
 #include <errno.h>
 #include <string.h>
@@ -81,8 +58,9 @@ int led_state = 1;
 #define I2S_DIN_GPIO  GPIO_NUM_7
 
 #define FREQ		102400000
-#define RTLSDR_BUF_LEN 			64000
-#define RTLSDR_BUF_NUM			2
+#define PPM_ERROR	0
+#define RTLSDR_BUF_LEN 			32000
+#define RTLSDR_BUF_NUM			4
 #define DEFAULT_SAMPLE_RATE		16000
 #define DEFAULT_BUF_LENGTH		(1 * 16000)
 #define MAXIMUM_OVERSAMPLE		8
@@ -745,15 +723,15 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 	vTaskDelay(pdMS_TO_TICKS(1));
 }
 
-static void dongle_thread_fn(void *arg)
+static void* dongle_thread_fn(void *arg)
 {
 	struct dongle_state *s = (dongle_state *) arg;
 	gpio_set_level(LED_GPIO, 1);
 	rtlsdr_read_async(s->dev, rtlsdr_callback, s, RTLSDR_BUF_NUM, RTLSDR_BUF_LEN);
-	return;
+	return 0;
 }
 
-static void demod_thread_fn(void *arg)
+static void* demod_thread_fn(void *arg)
 {
 	struct demod_state *d =(demod_state *) arg;
 	struct output_state *o = d->output_target;
@@ -780,10 +758,10 @@ static void demod_thread_fn(void *arg)
 		pthread_rwlock_unlock(&o->rw);
 		safe_cond_signal(&o->ready, &o->ready_m);
 	}
-	return;
+	return 0;
 }
 
-static void output_thread_fn(void *arg)
+static void* output_thread_fn(void *arg)
 {
 	struct output_state *s = (output_state *)arg;
 	ESP_ERROR_CHECK(i2s_channel_enable(tx_chan));
@@ -793,7 +771,7 @@ static void output_thread_fn(void *arg)
 		pthread_rwlock_rdlock(&s->rw);
 		size_t w_bytes = 0;
 		//ESP_LOGD(TAG, "OS");
-		i2s_channel_write(tx_chan, s->result, s->result_len, &w_bytes, 1000);
+		i2s_channel_write(tx_chan, s->result, s->result_len*2, &w_bytes, 1000);
 		//ESP_LOGD(TAG, "OE %d %d", s->result_len, w_bytes);
 		//for (int i =0;i<s->result_len;i++){
 		//	i2s_channel_write(tx_chan, "00", 1, &w_bytes, 1000);
@@ -801,7 +779,7 @@ static void output_thread_fn(void *arg)
 		//}
 		pthread_rwlock_unlock(&s->rw);
 	}
-	return;
+	return 0;
 }
 
 static void optimal_settings(int freq, int rate)
@@ -1023,7 +1001,7 @@ void print_cpu_frequency() {
 //int main(int argc, char **argv)
 extern "C"  void app_main() 
 {
-	esp_log_level_set("*", ESP_LOG_DEBUG);	
+	esp_log_level_set("*", ESP_LOG_INFO);	
 	uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
 	uart_set_pin(UART_NUM_0, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
@@ -1053,10 +1031,12 @@ extern "C"  void app_main()
 	printf("init done\n");
 	fflush(stdout);
 	vTaskDelay(1000 / portTICK_PERIOD_MS);
-		
+	
+	
+	/* manual settings */
 	controller.freqs[0] = (uint32_t) FREQ;
 	controller.freq_len++;
-
+	
 	//controller.wb_mode = 1;
 	//dongle.gain = 200;
 	dongle.offset_tuning = 1;
@@ -1071,7 +1051,7 @@ extern "C"  void app_main()
 	demod.deemph = 1;
 	demod.squelch_level = 0;
 
-	dongle.ppm_error = 66;
+	dongle.ppm_error = PPM_ERROR;
 	custom_ppm = 1;
 
 	/* quadruple sample_rate to limit to Δθ to ±π/2 */
@@ -1174,12 +1154,12 @@ extern "C"  void app_main()
 	//pthread_create(&controller.thread, NULL, controller_thread_fn, (void *)(&controller));
 	//xTaskCreate(controller_thread_fn, "contr", 4096, (void *)(&controller), 1, NULL);
 	//usleep(100000);
-	//pthread_create(&output.thread, NULL, output_thread_fn, (void *)(&output));
-	xTaskCreate(output_thread_fn, "output", 4096, (void *)(&output), 5, NULL);
-	//pthread_create(&demod.thread, NULL, demod_thread_fn, (void *)(&demod));
-	xTaskCreate(demod_thread_fn, "demo", 4096, (void *)(&demod), 5, NULL);
-	//pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
-	xTaskCreate(dongle_thread_fn, "dongle", 4096, (void *)(&dongle), 15, NULL);
+	pthread_create(&output.thread, NULL, output_thread_fn, (void *)(&output));
+	//xTaskCreate(output_thread_fn, "output", 4096, (void *)(&output), 5, NULL);
+	pthread_create(&demod.thread, NULL, demod_thread_fn, (void *)(&demod));
+	//xTaskCreate(demod_thread_fn, "demo", 4096, (void *)(&demod), 5, NULL);
+	pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
+	//xTaskCreate(dongle_thread_fn, "dongle", 4096, (void *)(&dongle), 5, NULL);
 //	vTaskDelay(pdMS_TO_TICKS(1000));
 	
 
