@@ -12,7 +12,7 @@ Trying to connect rtlsdr dongle and esp32s2
 ### Что получилось:
 - Адаптирована librtlsdr под библиотеку esp32 usb host
 - Опрашивается и конфигурируется RTLSDR v3 (Чипы RTL2832U + R820T2) 
-- Переписан rtl_tcp для вещания с esp32s2 по Wifi с samplerate 240000  (wifi через роутер)
+- Переписан rtl_tcp для вещания с esp32s2 по Wifi с samplerate 240000
 - Подключение GQRX, SDRSharp, SDR++ к rtl_tcp, успешно демодулируется iq-поток
 - Подключиться cо смартфона из SDR++
 - Адаптировать rtl_fm для демодуляции и воспроизведения через i2s DAC модуль MAX98357A, проверено на вещательной FM-радиостанции
