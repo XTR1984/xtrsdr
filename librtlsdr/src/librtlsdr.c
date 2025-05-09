@@ -1920,6 +1920,7 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 			usb_host_endpoint_halt(dev->devh, 0x81);
    		  	usb_host_endpoint_flush(dev->devh, 0x81);
 			vTaskDelay(1000 / portTICK_PERIOD_MS); 
+			usb_host_endpoint_clear(dev->devh, 0x81);
 
 			//next_status = RTLSDR_CANCELING;
 
