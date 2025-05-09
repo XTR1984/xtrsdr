@@ -21,6 +21,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_system.h"
 #include "esp_heap_caps.h"
 #include "esp_wifi.h"
@@ -59,6 +60,11 @@
 #define UART_TX_PIN GPIO_NUM_17
 #define UART_RX_PIN GPIO_NUM_18
 
+//select mode! 
+#define MODE_AP      // AP
+//#define MODE_STA     // Station
+//#define MODE_APSTA   //  AP and STA   not works as expected
+
 
 #if __has_include("password.h")
   #include "password.h"
@@ -71,11 +77,19 @@
     #define WIFI_PASSWORD "12345"
 #endif
 
-const gpio_num_t LED_GPIO = GPIO_NUM_15;
-int led_state = 1;
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
+
+#define AP_SSID          "RTL"
+#define AP_PASSWORD      "radio123"
+#define AP_CHANNEL       6
+#define AP_MAX_CONN      4
+#define WIFI_TXPOWER 	 44
+
+const gpio_num_t LED_GPIO = GPIO_NUM_15;
+int led_state = 1;
+
 
 #define closesocket close
 #define SOCKADDR struct sockaddr
@@ -174,22 +188,54 @@ void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 }
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, 	int32_t event_id, void* event_data) {
-	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-		esp_wifi_connect();
-	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-		esp_wifi_connect();
-		ESP_LOGI(TAG, "Retrying to connect to the AP");
+	if (event_base == WIFI_EVENT){
+		switch (event_id)
+		{
+		case WIFI_EVENT_STA_START:
+			/* code */
+			esp_wifi_connect();
+			break;
+        case WIFI_EVENT_STA_CONNECTED:
+            ESP_LOGI(TAG, "STA connected to AP");
+            break;			
+		case WIFI_EVENT_STA_DISCONNECTED:
+			/* code */
+			esp_wifi_connect();
+			ESP_LOGI(TAG, "Retrying to connect to the AP");			
+			break;
+		case WIFI_EVENT_AP_STACONNECTED:
+			{
+				wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
+				ESP_LOGI(TAG, "Station " MACSTR " joined AP, AID=%d", MAC2STR(event->mac), event->aid);
+				//ESP_LOGI(TAG, "Station joined AP, AID=%d", event->aid);
+			}
+			break;
+			
+		case WIFI_EVENT_AP_STADISCONNECTED:
+			{
+				wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
+				ESP_LOGI(TAG, "Station " MACSTR " left AP, AID=%d", MAC2STR(event->mac), event->aid);
+				//ESP_LOGI(TAG, "Station left AP, AID=%d", event->aid);
+			}
+			break;		
+		default:
+			break;
+		} 
 	} else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
 		ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
 		ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
-	}
+	} 
 }
 
 
-static void wifi_init_sta() {
+static void wifi_init() {
     esp_netif_init();
     esp_event_loop_create_default();
-    esp_netif_create_default_wifi_sta();
+    //esp_netif_create_default_wifi_sta();
+
+	esp_netif_t *ap_netif = esp_netif_create_default_wifi_ap();	
+	esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();		
+
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -208,28 +254,58 @@ static void wifi_init_sta() {
                                                         &instance_got_ip));
 
 
-wifi_config_t wifi_config = {
-  .sta = {
-      .ssid = WIFI_SSID,
-      .password = WIFI_PASSWORD,
-      .threshold = {
-          .authmode = WIFI_AUTH_WPA2_PSK,
-      },
-      .pmf_cfg = {
-          .capable = true,
-          .required = false
-      },
-      .sae_pwe_h2e = WPA3_SAE_PWE_BOTH,
-      .failure_retry_cnt = 3
-  },
-};
-  
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(44));
+	wifi_config_t wifi_config = {0};
 
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
+	#if defined(MODE_AP) || defined(MODE_APSTA)
+		strcpy((char*)wifi_config.ap.ssid, AP_SSID);
+    	wifi_config.ap.ssid_len = strlen(AP_SSID);
+    	//wifi_config.ap.channel = AP_CHANNEL;
+    	wifi_config.ap.max_connection = AP_MAX_CONN;
+    	wifi_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
+    
+	    if (strlen(AP_PASSWORD)) {
+        	strcpy((char*)wifi_config.ap.password, AP_PASSWORD);
+    	} else {
+	        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+	    }
+    #endif
+
+	#if defined(MODE_STA) || defined(MODE_APSTA)
+    
+    	strcpy((char*)wifi_config.sta.ssid, WIFI_SSID);
+    	strcpy((char*)wifi_config.sta.password, WIFI_PASSWORD);
+		wifi_config.sta.threshold = {.authmode = WIFI_AUTH_WPA2_PSK};
+  
+    #endif
+
+    
+    #if defined(MODE_AP)
+		//esp_netif_create_default_wifi_ap();		
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
+        ESP_LOGI(TAG, "WiFi initialized in AP mode");
+    #elif defined(MODE_STA)
+		//esp_netif_create_default_wifi_sta();	
+		ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+
+        ESP_LOGI(TAG, "WiFi initialized in STA mode");
+    #elif defined(MODE_APSTA)
+	
+		ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
+		ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));		
+		
+        ESP_LOGI(TAG, "WiFi initialized in AP+STA mode");
+    #else
+        #error "No WiFi mode defined! Please define WIFI_MODE_AP, WIFI_MODE_STA or WIFI_MODE_APSTA"
+    #endif
+
+  
+	ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(WIFI_TXPOWER)); 
+
+    ESP_LOGI(TAG, "wifi_init finished.");
 }
 
 
@@ -481,7 +557,7 @@ extern "C"  void app_main() {
     ESP_ERROR_CHECK(ret);
   
   	// init Wifi station
-    wifi_init_sta();
+    wifi_init();
 	print_memory_info();
 
 
