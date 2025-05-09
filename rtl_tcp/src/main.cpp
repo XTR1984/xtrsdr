@@ -117,6 +117,13 @@ static int llbuf_num = DEFAULT_MAX_NUM_BUFFERS;
 
 static volatile int do_exit = 0;
 
+void sighandler(void){
+	rtlsdr_cancel_async(dev);
+	fprintf(stderr, "ght, exiting!\n");
+	do_exit = 1;			
+}
+
+
 void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
 	led_state= !led_state;
@@ -248,6 +255,7 @@ static void *tcp_worker(void *arg)
 		if(r == ETIMEDOUT) {
 			pthread_mutex_unlock(&ll_mutex);
 			printf("worker cond timeout\n");
+			sighandler();
 			pthread_exit(NULL);
 		}
 
@@ -272,7 +280,7 @@ static void *tcp_worker(void *arg)
 				}
 				if(bytessent == SOCKET_ERROR || do_exit) {
 						printf("worker socket bye\n");
-
+						sighandler();
 						pthread_exit(NULL);
 				}
 			}
@@ -308,6 +316,7 @@ struct command{
 }__attribute__((packed));
 
 
+
 static void *command_worker(void *arg)
 {
 	int left, received = 0;
@@ -331,6 +340,7 @@ static void *command_worker(void *arg)
 			}
 			if(received == SOCKET_ERROR || do_exit) {
 				printf("comm recv bye\n");
+				sighandler();
 				pthread_exit(NULL);
 			}
 		}
@@ -341,8 +351,7 @@ static void *command_worker(void *arg)
 			break;
 		case 0x02:
 			printf("set sample rate %d\n", ntohl(cmd.param));
-			//rtlsdr_set_sample_rate(dev, ntohl(cmd.param));
-			rtlsdr_set_sample_rate(dev, 240000);
+			rtlsdr_set_sample_rate(dev, ntohl(cmd.param));
 			break;
 		case 0x03:
 			printf("set gain mode %d\n", ntohl(cmd.param));
@@ -400,18 +409,6 @@ static void *command_worker(void *arg)
 	}
 }
 
-
-/*void printMemoryInfo() {
-	Serial0.println("Memory Information:");
-	// common info
-	Serial0.printf("Total heap: %d bytes\n", ESP.getHeapSize());
-	Serial0.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
-	Serial0.printf("Minimum free heap: %d bytes\n", ESP.getMinFreeHeap());
-	// PSRAM info
-	Serial0.printf("Total PSRAM: %d bytes\n", ESP.getPsramSize());
-	Serial0.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
-  }
-*/  
 
 static void print_memory_info() {
     ESP_LOGI(TAG, "Memory Information:");
@@ -645,6 +642,10 @@ char addr_str[128];
 		ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
 	}
 	ESP_LOGI(TAG, "Socket created");
+
+	r = 1;
+	setsockopt(listensocket, SOL_SOCKET, SO_REUSEADDR, (char *)&r, sizeof(int));
+	setsockopt(listensocket, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
 
 	/* Bind a socket to a specific IP + port */
 	bind_err = bind(listensocket, (struct sockaddr *)&destAddr, sizeof(destAddr));
