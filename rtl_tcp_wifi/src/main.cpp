@@ -531,7 +531,7 @@ extern "C"  void app_main() {
 	uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
 	uart_set_pin(UART_NUM_0, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
-	printf("xtrsdr v1.0.0 / rtl_tcp_wifi start\n");  
+	printf("xtrsdr/rtl_tcp_wifi v1.0.0 start\n");  
 	esp_log_level_set("*", ESP_LOG_DEBUG);
 	 // Print memory info
 	//uint32_t cpu_freq = getCpuFrequencyMhz(); 
