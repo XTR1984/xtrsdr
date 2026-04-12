@@ -22,4 +22,4 @@ Trying to connect rtlsdr dongle and esp32s2  and esp32p4 (NEW!!)
 ### Примечания
 - поддержка USB и USB host имеется не во всех esp32 модулях
 - по модулю esp32s2 смотрите соответствующий readme
-- нужно поправить путь к librtlsdr в platformio.ini
+
