@@ -228,7 +228,11 @@
             log(`${t('downloading')} ${FIRMWARE_FILENAME} ${t('from')} ${selectedRelease.tag_name}...`, 'info');
             log(`${t('source')} ${firmwareAsset.browser_download_url}`, 'info');
             
-            const response = await fetch(firmwareAsset.browser_download_url);
+            const response = await fetch(firmwareAsset.url, {
+                headers: {
+                    "Accept": "application/octet-stream"
+                }
+            });
             if (!response.ok) throw new Error(`Download error: HTTP ${response.status}`);
             
             const arrayBuffer = await response.arrayBuffer();
