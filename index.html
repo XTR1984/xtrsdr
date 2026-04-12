@@ -2,341 +2,275 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 Web Flasher — Auto-load from Releases</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ESP32 Web Flasher — Simple</title>
     <style>
-        body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; }
-        button, select { padding: 10px 20px; margin: 10px 5px; cursor: pointer; }
-        #log { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; height: 300px; overflow-y: auto; }
-        .error { color: #f48771; }
-        .success { color: #6a9955; }
-        .info { color: #9cdcfe; }
-        .warning { color: #dcdcaa; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .release-info { background: #f0f0f0; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; max-width: 950px; margin: 0 auto; padding: 20px; background: #f5f7fb; }
+        .container { background: white; border-radius: 20px; padding: 24px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        button, select { padding: 10px 20px; margin: 8px 6px 8px 0; cursor: pointer; font-weight: 500; border-radius: 40px; border: 1px solid #ccc; background: white; transition: 0.2s; }
+        button:hover:not(:disabled) { background: #e6f0ff; border-color: #0066cc; transform: translateY(-1px); }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        .danger-btn { border-color: #dc2626; color: #dc2626; }
+        .danger-btn:hover:not(:disabled) { background: #fee2e2; border-color: #dc2626; }
+        select { background: white; cursor: pointer; border-radius: 40px; padding: 10px 16px; }
+        #log { background: #1e1e2a; color: #d4d4dc; padding: 18px; border-radius: 16px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; height: 320px; overflow-y: auto; margin-top: 20px; box-shadow: inset 0 0 8px rgba(0,0,0,0.3); }
+        .error { color: #fca5a5; }
+        .success { color: #a3e9a4; }
+        .info { color: #7dd3fc; }
+        .warning { color: #fde047; }
+        button:disabled { opacity: 0.55; cursor: not-allowed; }
+        .release-info { background: #f0f4fe; padding: 14px 18px; border-radius: 24px; margin: 15px 0; border-left: 5px solid #2c7da0; }
+        h1 { margin-top: 0; }
+        .flex-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .lang-switch { text-align: right; margin-bottom: 10px; }
-        .lang-btn { padding: 5px 10px; margin: 0 2px; font-size: 14px; }
-        .lang-btn.active { background: #0066cc; color: white; border-color: #0066cc; }
-        [data-en] { display: none; }
-        [data-ru] { display: none; }
-        body.lang-en [data-en] { display: inline; }
-        body.lang-en [data-ru] { display: none; }
-        body.lang-ru [data-ru] { display: inline; }
-        body.lang-ru [data-en] { display: none; }
-        .text-en, .text-ru { display: none; }
-        body.lang-en .text-en { display: block; }
-        body.lang-ru .text-ru { display: block; }
+        .lang-btn { padding: 5px 12px; margin: 0 3px; font-size: 13px; border-radius: 30px; background: #e2e8f0; border: none; }
+        .lang-btn.active { background: #1e4a76; color: white; }
         .inline-en, .inline-ru { display: none; }
         body.lang-en .inline-en { display: inline; }
         body.lang-ru .inline-ru { display: inline; }
     </style>
 </head>
 <body class="lang-en">
+<div class="container">
     <div class="lang-switch">
-        <button class="lang-btn active" data-lang="en">EN</button>
-        <button class="lang-btn" data-lang="ru">RU</button>
+        <button class="lang-btn active" data-lang="en">🇬🇧 EN</button>
+        <button class="lang-btn" data-lang="ru">🇷🇺 RU</button>
     </div>
 
-    <h1><span class="inline-en">🔧 Flash ESP32 from GitHub Releases</span><span class="inline-ru">🔧 Прошивка ESP32 из GitHub Releases</span></h1>
+    <h1>⚡ ESP32 Flasher</h1>
     
     <div class="release-info">
-        <label><span class="inline-en">📦 Select firmware version:</span><span class="inline-ru">📦 Выберите версию прошивки:</span></label>
-        <select id="versionSelect" style="width: 70%; padding: 8px; margin-left: 10px;">
-            <option value=""><span class="inline-en">Loading versions...</span><span class="inline-ru">Загрузка списка версий...</span></option>
+        <div class="flex-between">
+            <label><strong><span class="inline-en">📦 Version:</span><span class="inline-ru">📦 Версия:</span></strong></label>
+            <button id="refreshBtn" title="Refresh">🔄</button>
+        </div>
+        <select id="versionSelect" style="width: 100%; margin-top: 10px;">
+            <option><span class="inline-en">Loading...</span><span class="inline-ru">Загрузка...</span></option>
         </select>
-        <button id="loadVersionsBtn" style="margin-left: 10px;">🔄</button>
     </div>
-    
-    <div>
-        <button id="connectBtn"><span class="inline-en">1️⃣ Connect to ESP</span><span class="inline-ru">1️⃣ Подключиться к ESP</span></button>
-        <button id="flashBtn" disabled><span class="inline-en">2️⃣ Flash selected version</span><span class="inline-ru">2️⃣ Прошить выбранную версию</span></button>
-    </div>
-    
-    <div id="log"></div>
 
-      
-    <script type="module">
-        import {    
-            ESPLoader,
-            Transport,
-        } from "https://unpkg.com/esptool-js/bundle.js";;        
-        const GITHUB_USERNAME = "xtr1984";
-        const REPO_NAME = "xtrsdr";
-        const FIRMWARE_FILENAME = "firmware.bin";
-        const FIRMWARE_ADDRESS = 0x1000;
+    <div class="flex-row">
+        <button id="connectBtn">🔌 <span class="inline-en">1️⃣ Connect</span><span class="inline-ru">1️⃣ Подключить</span></button>
+        <button id="flashBtn" disabled>🔥 <span class="inline-en">2️⃣ Flash</span><span class="inline-ru">2️⃣ Прошить</span></button>
+        <button id="eraseBtn" disabled class="danger-btn">⚠️ <span class="inline-en">Erase Flash</span><span class="inline-ru">Стереть Flash</span></button>
+    </div>
+
+    <div id="log"></div>
+    <div style="font-size: 12px; margin-top: 12px; text-align: center; opacity: 0.7;">
+        <span class="inline-en">💡 Requires WebSerial (Chrome / Edge / Opera)</span>
+        <span class="inline-ru">💡 Требуется WebSerial (Chrome / Edge / Opera)</span>
+    </div>
+</div>
+
+<script type="module">
+    import { ESPLoader, Transport } from "https://unpkg.com/esptool-js/bundle.js";
+
+    // ---------- CONFIG ----------
+    const MANIFEST_PATH = "firmwares/manifest.json";
+    const BASE_PATH = "firmwares/";
+    
+    const ADDR = {
+        BOOTLOADER: 0x2000,
+        PARTITIONS: 0x8000,
+        FIRMWARE: 0x10000
+    };
+    
+    // ---------- GLOBALS ----------
+    let transport = null;
+    let esploader = null;
+    let versions = [];
+    let currentVersion = null;
+    
+    // DOM
+    const connectBtn = document.getElementById('connectBtn');
+    const flashBtn = document.getElementById('flashBtn');
+    const eraseBtn = document.getElementById('eraseBtn');
+    const versionSelect = document.getElementById('versionSelect');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const logDiv = document.getElementById('log');
+    
+    // ---------- I18N ----------
+    let lang = 'en';
+    const text = {
+        en: {
+            loading: "Loading manifest...", noVersions: "No versions found",
+            fetchFail: "Failed to load manifest", version: "Version",
+            boot: "Bootloader", part: "Partitions", fw: "Firmware",
+            connect: "Requesting port...", detect: "Detecting chip...",
+            connected: "Connected", error: "Error", flashStart: "Flashing...",
+            eraseStart: "Erasing full flash...", eraseDone: "Flash erased!",
+            done: "Complete!", reset: "Device reset", fail: "Failed",
+            connectFirst: "Connect ESP32 first", bytes: "bytes", addr: "at"
+        },
+        ru: {
+            loading: "Загрузка...", noVersions: "Нет версий",
+            fetchFail: "Ошибка загрузки", version: "Версия",
+            boot: "Загрузчик", part: "Таблица разделов", fw: "Прошивка",
+            connect: "Запрос порта...", detect: "Определение чипа...",
+            connected: "Подключено", error: "Ошибка", flashStart: "Прошивка...",
+            eraseStart: "Стирание flash...", eraseDone: "Flash стёрта!",
+            done: "Готово!", reset: "Сброс", fail: "Ошибка",
+            connectFirst: "Сначала подключите ESP32", bytes: "байт", addr: "адрес"
+        }
+    };
+    const t = (k) => text[lang][k] || k;
+    
+    function log(msg, type = 'info') {
+        const el = document.createElement('div');
+        el.textContent = msg;
+        el.className = type;
+        logDiv.appendChild(el);
+        el.scrollIntoView();
+        console.log(`[${type}] ${msg}`);
+    }
+    
+    // ---------- MANIFEST (simple: just array of version names) ----------
+    async function loadManifest() {
+        try {
+            log(`📋 ${t('loading')}`, 'info');
+            versionSelect.disabled = true;
+            versionSelect.innerHTML = `<option>⏳ ${t('loading')}</option>`;
+            
+            const res = await fetch(MANIFEST_PATH + "?t=" + Date.now());
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const data = await res.json();
+            versions = data.versions || data;  // support {versions: [...]} or just [...]
+            if (!versions.length) throw new Error(t('noVersions'));
+            
+            versionSelect.innerHTML = versions.map(v => {
+                const name = typeof v === 'string' ? v : v.name;
+                return `<option value="${name}">📦 ${name}</option>`;
+            }).join('');
+            
+            versionSelect.disabled = false;
+            currentVersion = typeof versions[0] === 'string' ? versions[0] : versions[0].name;
+            log(`✅ ${versions.length} version(s) loaded`, 'success');
+        } catch (err) {
+            log(`❌ ${t('fetchFail')}: ${err.message}`, 'error');
+            versionSelect.innerHTML = `<option>❌ ${t('fetchFail')}</option>`;
+            versionSelect.disabled = false;
+        }
+    }
+    
+    // ---------- AUTO BUILD PATH: firmwares/{version}/{file} ----------
+    function getBinPath(version, type) {
+        return `${BASE_PATH}${version}/${type}.bin`;
+    }
+    
+    async function loadBinary(version, type) {
+        const path = getBinPath(version, type);
+        log(`📂 ${t(type)}: ${path}`, 'info');
+        const res = await fetch(path + "?t=" + Date.now());
+        if (!res.ok) throw new Error(`${t(type)}: HTTP ${res.status}`);
+        const data = new Uint8Array(await res.arrayBuffer());
+        log(`✅ ${data.length} ${t('bytes')} (${(data.length/1024).toFixed(1)} KB)`, 'success');
+        return data;
+    }
+    
+    async function loadAllBinaries(version) {
+        return [
+            { data: await loadBinary(version, 'bootloader'), address: ADDR.BOOTLOADER },
+            { data: await loadBinary(version, 'partitions'), address: ADDR.PARTITIONS },
+            { data: await loadBinary(version, 'firmware'),   address: ADDR.FIRMWARE }
+        ];
+    }
+    
+    // ---------- CONNECT ----------
+    async function connect() {
+        try {
+            log(`🔌 ${t('connect')}`, 'info');
+            const port = await navigator.serial.requestPort({});
+            transport = new Transport(port, true);
+            esploader = new ESPLoader({
+                transport, baudrate: 115200,
+                terminal: { clean: () => {}, writeLine: (d) => log(`[ESP] ${d}`, 'info'), write: () => {} }
+            });
+            log(`🔍 ${t('detect')}`, 'info');
+            const chip = await esploader.main();
+            log(`✅ ${t('connected')} ${chip}`, 'success');
+            connectBtn.disabled = true;
+            flashBtn.disabled = false;
+            eraseBtn.disabled = false;
+        } catch (err) {
+            log(`❌ ${t('error')}: ${err.message}`, 'error');
+            if (transport) { try { await transport.disconnect(); } catch(e) {} transport = null; }
+            connectBtn.disabled = false;
+            flashBtn.disabled = eraseBtn.disabled = true;
+        }
+    }
+    
+    // ---------- FLASH ----------
+    async function flash() {
+        if (!currentVersion) { log(`⚠️ ${t('version')}?`, 'error'); return; }
+        if (!esploader) { log(`⚠️ ${t('connectFirst')}`, 'warning'); return; }
         
-        let transport, esploader;
-        let selectedRelease = null;
-        let releasesList = [];
+        try {
+            flashBtn.disabled = eraseBtn.disabled = true;
+            log(`🔥 ${t('flashStart')} ${currentVersion}`, 'info');
+            
+            const bins = await loadAllBinaries(currentVersion);
+            await esploader.writeFlash({
+                fileArray: bins,
+                eraseAll: false,
+                compress: true,
+                flashSize: "4MB",
+                reportProgress: (idx, written, total) => {
+                    const pct = Math.floor(written/total*100);
+                    if (pct % 25 === 0 || pct === 100) {
+                        const names = ['bootloader','partitions','firmware'];
+                        log(`📊 ${names[idx]}: ${pct}%`, 'info');
+                    }
+                }
+            });
+            log(`✨✅ ${t('done')}`, 'success');
+            await esploader.after("hard_reset");
+            log(`🔄 ${t('reset')}`, 'success');
+        } catch (err) {
+            log(`❌ ${t('fail')}: ${err.message}`, 'error');
+        } finally {
+            flashBtn.disabled = eraseBtn.disabled = false;
+        }
+    }
+    
+    // ---------- ERASE ----------
+    async function erase() {
+        if (!esploader) { log(`⚠️ ${t('connectFirst')}`, 'warning'); return; }
+        if (!confirm(lang === 'en' ? 'ERASE FULL FLASH? All data will be lost!' : 'СТЕРЕТЬ ВСЮ FLASH? Все данные будут удалены!')) return;
         
-        const connectBtn = document.getElementById('connectBtn');
-        const flashBtn = document.getElementById('flashBtn');
-        const versionSelect = document.getElementById('versionSelect');
-        const loadVersionsBtn = document.getElementById('loadVersionsBtn');
-        const logDiv = document.getElementById('log');
-        
-        const strings = {
-            en: {
-                loading: "Loading versions...",
-                noReleases: "No releases",
-                releasesNotFound: "Releases not found. Create a release on GitHub with file",
-                loaded: "Loaded",
-                releases: "releases",
-                noFirmware: "no firmware file",
-                selected: "Selected release:",
-                file: "File:",
-                noFileInRelease: "No firmware file in release",
-                downloading: "Downloading",
-                from: "from release",
-                source: "Source:",
-                downloaded: "Downloaded",
-                bytes: "bytes",
-                requestPort: "Requesting COM port access...",
-                detectingChip: "Detecting chip...",
-                connected: "Connected:",
-                error: "Error:",
-                noReleaseSelected: "No release selected",
-                startingFlash: "Starting flash...",
-                progress: "Progress:",
-                flashComplete: "Flash completed successfully!",
-                deviceReset: "Device reset",
-                flashError: "Flash error:",
-                instruction1: "1. Select firmware version from list",
-                instruction2: "2. Click 'Connect to ESP' and select COM port",
-                instruction3: "3. Click 'Flash selected version'",
-                firmwareNameNote: "Firmware file must be named",
-                inRelease: "in the release on GitHub"
-            },
-            ru: {
-                loading: "Загрузка списка версий...",
-                noReleases: "Нет релизов",
-                releasesNotFound: "Релизы не найдены. Создайте релиз на GitHub с файлом",
-                loaded: "Загружено",
-                releases: "релизов",
-                noFirmware: "нет файла прошивки",
-                selected: "Выбран релиз:",
-                file: "Файл:",
-                noFileInRelease: "В релизе нет файла прошивки",
-                downloading: "Скачивание",
-                from: "из релиза",
-                source: "Источник:",
-                downloaded: "Скачано",
-                bytes: "байт",
-                requestPort: "Запрос доступа к COM-порту...",
-                detectingChip: "Определение чипа...",
-                connected: "Подключено:",
-                error: "Ошибка:",
-                noReleaseSelected: "Релиз не выбран",
-                startingFlash: "Начало прошивки...",
-                progress: "Прогресс:",
-                flashComplete: "Прошивка успешно завершена!",
-                deviceReset: "Устройство перезагружено",
-                flashError: "Ошибка прошивки:",
-                instruction1: "1. Выберите версию прошивки из списка",
-                instruction2: "2. Нажмите 'Подключиться к ESP' и выберите COM-порт",
-                instruction3: "3. Нажмите 'Прошить выбранную версию'",
-                firmwareNameNote: "Файл прошивки должен называться",
-                inRelease: "в релизе на GitHub"
-            }
+        try {
+            flashBtn.disabled = eraseBtn.disabled = connectBtn.disabled = true;
+            log(`⚠️ ${t('eraseStart')}`, 'warning');
+            await esploader.eraseFlash();
+            log(`✅ ${t('eraseDone')}`, 'success');
+            await esploader.after("hard_reset");
+            log(`🔄 ${t('reset')}`, 'success');
+        } catch (err) {
+            log(`❌ ${t('fail')}: ${err.message}`, 'error');
+        } finally {
+            flashBtn.disabled = eraseBtn.disabled = connectBtn.disabled = false;
+        }
+    }
+    
+    // ---------- EVENTS ----------
+    connectBtn.onclick = connect;
+    flashBtn.onclick = flash;
+    eraseBtn.onclick = erase;
+    refreshBtn.onclick = loadManifest;
+    versionSelect.onchange = (e) => { currentVersion = e.target.value; log(`📌 ${t('version')}: ${currentVersion}`, 'info'); };
+    
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.onclick = () => {
+            lang = btn.dataset.lang;
+            document.body.className = `lang-${lang}`;
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
         };
-        
-        let currentLang = 'en';
-        
-        function t(key) {
-            return strings[currentLang][key] || key;
-        }
-        
-        function log(message, type = 'info', langKey = null) {
-            const entry = document.createElement('div');
-            let displayMessage = message;
-            if (langKey && currentLang === 'ru' && strings.ru[langKey]) {
-                displayMessage = strings.ru[langKey];
-            } else if (langKey && currentLang === 'en' && strings.en[langKey]) {
-                displayMessage = strings.en[langKey];
-            }
-            entry.textContent = displayMessage;
-            entry.className = type;
-            logDiv.appendChild(entry);
-            logDiv.scrollTop = logDiv.scrollHeight;
-            console.log(displayMessage);
-        }
-        
-        async function loadReleases() {
-            try {
-                log(`📡 ${t('loading')}...`, 'info');
-                versionSelect.disabled = true;
-                versionSelect.innerHTML = `<option>${t('loading')}...</option>`;
-                
-                const response = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/releases`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
-                releasesList = await response.json();
-                
-                if (releasesList.length === 0) {
-                    versionSelect.innerHTML = `<option>${t('noReleases')}</option>`;
-                    log(`${t('releasesNotFound')} ${FIRMWARE_FILENAME}`, 'warning');
-                    return;
-                }
-                
-                versionSelect.innerHTML = releasesList.map(release => {
-                    const hasFirmware = release.assets.some(a => a.name === FIRMWARE_FILENAME);
-                    return `<option value="${release.tag_name}" data-release='${JSON.stringify(release)}' 
-                            style="${hasFirmware ? '' : 'background:#ffcccc;'}">
-                            ${release.tag_name} - ${release.name || 'untitled'} 
-                            ${hasFirmware ? '✅' : `❌ ${t('noFirmware')}`}
-                           </option>`;
-                }).join('');
-                
-                log(`✅ ${t('loaded')} ${releasesList.length} ${t('releases')}`, 'success');
-                versionSelect.disabled = false;
-                
-                const latestWithFirmware = releasesList.find(r => r.assets.some(a => a.name === FIRMWARE_FILENAME));
-                if (latestWithFirmware) {
-                    versionSelect.value = latestWithFirmware.tag_name;
-                    selectRelease(latestWithFirmware);
-                }
-                
-            } catch (error) {
-                log(`❌ ${t('error')} ${error.message}`, 'error');
-                versionSelect.innerHTML = `<option>${t('error')}</option>`;
-            }
-        }
-        
-        function selectRelease(release) {
-            selectedRelease = release;
-            const hasFirmware = release.assets.some(a => a.name === FIRMWARE_FILENAME);
-            
-            if (hasFirmware) {
-                log(`${t('selected')} ${release.tag_name}`, 'success');
-                const firmwareAsset = release.assets.find(a => a.name === FIRMWARE_FILENAME);
-                log(`${t('file')} ${FIRMWARE_FILENAME} (${Math.round(firmwareAsset.size / 1024)} KB)`, 'info');
-            } else {
-                log(`${t('noFileInRelease')} ${release.tag_name}`, 'warning');
-            }
-        }
-        
-        async function downloadFirmwareFromRelease() {
-            if (!selectedRelease) {
-                throw new Error(t('noReleaseSelected'));
-            }
-            
-            const firmwareAsset = selectedRelease.assets.find(a => a.name === FIRMWARE_FILENAME);
-            if (!firmwareAsset) {
-                throw new Error(`${t('noFileInRelease')} ${selectedRelease.tag_name}`);
-            }
-            
-            log(`${t('downloading')} ${FIRMWARE_FILENAME} ${t('from')} ${selectedRelease.tag_name}...`, 'info');
-            log(`${t('source')} ${firmwareAsset.browser_download_url}`, 'info');
-            
-            const response = await fetch(firmwareAsset.url, {
-                headers: {
-                    "Accept": "application/octet-stream"
-                }
-            });
-            if (!response.ok) throw new Error(`Download error: HTTP ${response.status}`);
-            
-            const arrayBuffer = await response.arrayBuffer();
-            const firmwareData = new Uint8Array(arrayBuffer);
-            
-            log(`✅ ${t('downloaded')} ${firmwareData.length} ${t('bytes')} (${Math.round(firmwareData.length / 1024)} KB)`, 'success');
-            return firmwareData;
-        }
-        
-        connectBtn.addEventListener('click', async () => {
-            try {
-                log(t('requestPort'), 'info');
-                const port = await navigator.serial.requestPort({
-                    filters: [
-//                        { usbVendorId: 0x1a86, usbProductId: 0x55d3}
-                    ]
-                });
-                
-                transport = new Transport(port, true);
-                esploader = new ESPLoader({
-                    transport: transport,
-                    baudrate: 115200,
-                    terminal: {
-                        clean: () => log('=== CLEAR ===', 'info'),
-                        writeLine: (data) => log(data, 'info'),
-                        write: (data) => log(data, 'info')
-                    }
-                });
-                
-                log(t('detectingChip'), 'info');
-                const chipName = await esploader.main();
-                log(`${t('connected')} ${chipName}`, 'success');
-                
-                connectBtn.disabled = true;
-                flashBtn.disabled = false;
-                
-            } catch (error) {
-                log(`${t('error')} ${error.message}`, 'error');
-                if (transport) await transport.disconnect();
-            }
-        });
-        
-        flashBtn.addEventListener('click', async () => {
-            if (!selectedRelease) {
-                log(t('noReleaseSelected'), 'error');
-                return;
-            }
-            
-            try {
-                flashBtn.disabled = true;
-                
-                const firmwareData = await downloadFirmwareFromRelease();
-                
-                log(t('startingFlash'), 'info');
-                const flashOptions = {
-                    fileArray: [{ data: firmwareData, address: FIRMWARE_ADDRESS }],
-                    eraseAll: false,
-                    compress: true,
-                    reportProgress: (fileIndex, written, total) => {
-                        const percent = Math.round((written / total) * 100);
-                        if (percent % 20 === 0) log(`${t('progress')} ${percent}%`, 'info');
-                    }
-                };
-                
-                await esploader.writeFlash(flashOptions);
-                
-                log(`✅ ${t('flashComplete')}`, 'success');
-                
-                await esploader.hardReset();
-                log(t('deviceReset'), 'success');
-                
-            } catch (error) {
-                log(`${t('flashError')} ${error.message}`, 'error');
-            } finally {
-                flashBtn.disabled = false;
-            }
-        });
-        
-        versionSelect.addEventListener('change', () => {
-            const selectedTag = versionSelect.value;
-            const release = releasesList.find(r => r.tag_name === selectedTag);
-            if (release) selectRelease(release);
-        });
-        
-        loadVersionsBtn.addEventListener('click', () => loadReleases());
-        
-        document.querySelectorAll('.lang-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                currentLang = btn.dataset.lang;
-                document.body.classList.remove('lang-en', 'lang-ru');
-                document.body.classList.add(`lang-${currentLang}`);
-                document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-        
-        loadReleases();
-        
-        setTimeout(() => {
-            log(`💡 ${t('instruction1')}`, 'info');
-            log(`💡 ${t('instruction2')}`, 'info');
-            log(`💡 ${t('instruction3')}`, 'info');
-            log(`📌 ${t('firmwareNameNote')} "${FIRMWARE_FILENAME}" ${t('inRelease')}`, 'warning');
-        }, 500);
-    </script>
+    });
+    
+    // START
+    loadManifest();
+</script>
 </body>
 </html>
