@@ -630,8 +630,13 @@ void rtlsdr_init_baseband(rtlsdr_dev_t *dev)
 
 	/* initialize USB */
 	
-	rtlsdr_write_reg(dev, USBB, USB_SYSCTL, 0x09, 1);   //it was 0x09
-	rtlsdr_write_reg(dev, USBB, USB_EPA_MAXPKT, 0x4000, 2);  //it was 0x0002 (512)
+	rtlsdr_write_reg(dev, USBB, USB_SYSCTL, 0x09, 1);   
+#ifdef CONFIG_IDF_TARGET_ESP32S2	
+	rtlsdr_write_reg(dev, USBB, USB_EPA_MAXPKT, 0x4000, 2);  //64
+#else	
+	rtlsdr_write_reg(dev, USBB, USB_EPA_MAXPKT, 0x0002, 2);  //512
+#endif
+
 	rtlsdr_write_reg(dev, USBB, USB_EPA_CTL, 0x1002, 2);
 
 	/* poweron demod */
