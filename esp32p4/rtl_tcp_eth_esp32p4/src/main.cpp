@@ -81,7 +81,7 @@
 
 #define DEFAULT_PORT_STR "1234"
 #define DEFAULT_SAMPLE_RATE_HZ 240000
-#define DEFAULT_MAX_NUM_BUFFERS 100
+#define DEFAULT_MAX_NUM_BUFFERS 50
 
 static SOCKET s;
 
@@ -174,10 +174,13 @@ void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 	//led_state= !led_state;
 	//gpio_set_level(LED_GPIO, led_state);
 	if(!do_exit) {
+#ifdef CONFIG_SPIRAM 
+		struct llist *rpt = (struct llist*) heap_caps_malloc(sizeof(struct llist),MALLOC_CAP_SPIRAM);
+		rpt->data = (char*)heap_caps_malloc(len,MALLOC_CAP_SPIRAM);
+#else
 		struct llist *rpt = (struct llist*)malloc(sizeof(struct llist));
 		rpt->data = (char*)malloc(len);
-		//struct llist *rpt = (struct llist*) heap_caps_malloc(sizeof(struct llist),MALLOC_CAP_SPIRAM);
-		//rpt->data = (char*)heap_caps_malloc(len,MALLOC_CAP_SPIRAM);
+#endif
 		memcpy(rpt->data, buf, len);
 		rpt->len = len;
 		rpt->next = NULL;
@@ -441,7 +444,7 @@ extern "C"  void app_main() {
 //	ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0));
 //	ESP_ERROR_CHECK(uart_set_pin(UART_NUM_0, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
-	printf("xtrsdr/rtl_tcp_eth_esp32p4 v1.0.0 start\n");  
+	printf("xtrsdr/rtl_tcp_eth_esp32p4 v1.0.1 start\n");  
 	esp_log_level_set("*", ESP_LOG_DEBUG);
 
 	print_memory_info();
