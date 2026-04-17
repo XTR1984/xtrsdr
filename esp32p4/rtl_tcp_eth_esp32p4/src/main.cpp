@@ -81,7 +81,11 @@
 
 #define DEFAULT_PORT_STR "1234"
 #define DEFAULT_SAMPLE_RATE_HZ 240000
-#define DEFAULT_MAX_NUM_BUFFERS 50
+#ifdef CONFIG_SPIRAM
+	#define DEFAULT_MAX_NUM_BUFFERS 500
+#else
+	#define DEFAULT_MAX_NUM_BUFFERS 50
+#endif
 
 static SOCKET s;
 
@@ -444,7 +448,7 @@ extern "C"  void app_main() {
 //	ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0));
 //	ESP_ERROR_CHECK(uart_set_pin(UART_NUM_0, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
-	printf("xtrsdr/rtl_tcp_eth_esp32p4 v1.0.1 start\n");  
+	printf("xtrsdr/rtl_tcp_eth_esp32p4 v1.0.3 start\n");  
 	esp_log_level_set("*", ESP_LOG_DEBUG);
 
 	print_memory_info();
